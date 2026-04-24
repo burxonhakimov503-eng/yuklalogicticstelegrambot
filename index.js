@@ -38,8 +38,9 @@ bot.use((ctx, next) => {
     return next();
 });
 
-// Ma'lumotlarni saqlash uchun fayl
-const dataFile = path.join(__dirname, 'data.json');
+// Ma'lumotlarni saqlash uchun fayl (Railway Volume uchun moslashtirildi)
+const dataDir = process.env.DATA_DIR || __dirname;
+const dataFile = path.join(dataDir, 'data.json');
 
 // Agar data.json bo'lmasa yaratamiz
 if (!fs.existsSync(dataFile)) {
