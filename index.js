@@ -38,26 +38,61 @@ bot.use((ctx, next) => {
     return next();
 });
 
-// Ma'lumotlarni saqlash uchun fayl (Railway Volume uchun moslashtirildi)
-const dataDir = process.env.DATA_DIR || __dirname;
-const dataFile = path.join(dataDir, 'data.json');
+// Ma'lumotlar bazasi bilan ishlash (PostgreSQL)
+const { Pool } = require('pg');
 
-// Agar data.json bo'lmasa yaratamiz
-if (!fs.existsSync(dataFile)) {
-    fs.writeFileSync(dataFile, JSON.stringify({ users: [], orders: 0, loads: [] }));
+let pool;
+if (process.env.DATABASE_URL) {
+    pool = new Pool({
+        connectionString: process.env.DATABASE_URL,
+        ssl: { rejectUnauthorized: false }
+    });
+}
+
+let memoryData = { users: [], orders: 0, loads: [] };
+
+// Ma'lumotlarni faylga yozish (zaxira va local test uchun)
+const dataFile = path.join(__dirname, 'data.json');
+
+async function initDB() {
+    if (!pool) {
+        if (fs.existsSync(dataFile)) {
+            memoryData = JSON.parse(fs.readFileSync(dataFile, 'utf8'));
+            if (!memoryData.loads) memoryData.loads = [];
+        }
+        return;
+    }
+    
+    await pool.query(`
+        CREATE TABLE IF NOT EXISTS app_state (
+            id SERIAL PRIMARY KEY,
+            data JSONB NOT NULL
+        );
+    `);
+    
+    const res = await pool.query('SELECT data FROM app_state WHERE id = 1');
+    if (res.rows.length > 0) {
+        memoryData = res.rows[0].data;
+        if (!memoryData.loads) memoryData.loads = [];
+    } else {
+        await pool.query('INSERT INTO app_state (id, data) VALUES (1, $1)', [memoryData]);
+    }
 }
 
 // Baza bilan ishlash funksiyalari
 function readData() {
-    const data = JSON.parse(fs.readFileSync(dataFile, 'utf8'));
-    if (!data.loads) data.loads = [];
-    return data;
+    return memoryData;
 }
 
 function writeData(data) {
-    const tmpFile = dataFile + '.tmp';
-    fs.writeFileSync(tmpFile, JSON.stringify(data, null, 2));
-    fs.renameSync(tmpFile, dataFile);
+    memoryData = data;
+    if (pool) {
+        pool.query('UPDATE app_state SET data = $1 WHERE id = 1', [memoryData]).catch(err => console.error("DB yozishda xato:", err));
+    } else {
+        const tmpFile = dataFile + '.tmp';
+        fs.writeFileSync(tmpFile, JSON.stringify(data, null, 2));
+        fs.renameSync(tmpFile, dataFile);
+    }
 }
 
 function addUser(userId) {
@@ -632,8 +667,9 @@ bot.action(/cancel_load_(.+)/, async (ctx) => {
     ctx.answerCbQuery("Yuk o'chirildi.");
 });
 // Botni ishga tushirish
-bot.launch().then(async () => {
-    console.log("Bot muvaffaqiyatli ishga tushdi!");
+initDB().then(() => {
+    bot.launch().then(async () => {
+        console.log("Bot muvaffaqiyatli ishga tushdi!");
     try {
         // Hamma uchun komandalar
         await bot.telegram.setMyCommands([
@@ -650,6 +686,7 @@ bot.launch().then(async () => {
     } catch (err) {
         console.error("Komandalarni o'rnatishda xatolik:", err);
     }
+});
 });
 
 // Graceful stop
