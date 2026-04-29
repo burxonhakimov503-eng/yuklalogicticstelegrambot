@@ -2,6 +2,18 @@ require('dotenv').config();
 const { Telegraf, session, Scenes, Markup } = require('telegraf');
 const fs = require('fs');
 const path = require('path');
+const express = require('express');
+
+// Express server — Mini App uchun
+const app = express();
+const PORT = process.env.PORT || 3000;
+app.use(express.static(__dirname));
+app.get('/', (req, res) => {
+    res.sendFile(path.join(__dirname, 'miniapp.html'));
+});
+app.listen(PORT, () => {
+    console.log(`Mini App server ishga tushdi: http://localhost:${PORT}`);
+});
 
 // Atrof-muhit o'zgaruvchilari
 const BOT_TOKEN = process.env.BOT_TOKEN;
@@ -418,7 +430,7 @@ const orderWizard = new Scenes.WizardScene(
 
         const menuKeyboard = Markup.keyboard([
             ['📦 Yuk joylash', '🔍 Yuk topish'],
-['❌ Yukni bekor qilish', '📱 Mini App']
+            ['❌ Yukni bekor qilish']
         ]).resize();
         await ctx.reply("Yana yuk joylash uchun pastdagi tugmani bosing.", menuKeyboard);
 
@@ -597,16 +609,18 @@ searchWizard.action(/sto_r_(.+)_(.+)/, async (ctx) => {
 
     const menuKeyboard = Markup.keyboard([
         ['📦 Yuk joylash', '🔍 Yuk topish'],
-        ['❌ Yukni bekor qilish''📱 Mini App']
+        ['❌ Yukni bekor qilish']
     ]).resize();
     await ctx.reply("Bosh menyu:", menuKeyboard);
     return ctx.scene.leave();
 });
-const MINI_APP_URL = process.env.MINI_APP_URL || '';
+
 // FIX: session va stage OLDIN, bot.start KEYIN
 const stage = new Scenes.Stage([orderWizard, searchWizard]);
 bot.use(session());
 bot.use(stage.middleware());
+
+const MINI_APP_URL = process.env.MINI_APP_URL || '';
 
 // /start komandasi
 bot.start((ctx) => {
@@ -615,9 +629,19 @@ bot.start((ctx) => {
     const userName = ctx.from.first_name || 'Foydalanuvchi';
     const menuKeyboard = Markup.keyboard([
         ['📦 Yuk joylash', '🔍 Yuk topish'],
-        ['❌ Yukni bekor qilish''📱 Mini App']
+        ['❌ Yukni bekor qilish', '📱 Mini App']
     ]).resize();
-    ctx.reply(`Salom, ${userName}! Logistika botimizga xush kelibsiz.\nQuyidagi menyudan kerakli bo'limni tanlang:`, menuKeyboard);
+    ctx.reply(`Salom, ${userName}! Yukla Logistics botimizga xush kelibsiz! 🚛\nQuyidagi menyudan kerakli bo'limni tanlang:`, menuKeyboard);
+});
+
+// Mini App tugmasi
+bot.hears('📱 Mini App', (ctx) => {
+    if (!MINI_APP_URL) {
+        return ctx.reply("⚙️ Mini App hali sozlanmagan. Railway da MINI_APP_URL ni qo'shing.");
+    }
+    ctx.reply('🚛 Yukla.uz Mini App ni oching:', Markup.inlineKeyboard([
+        [Markup.button.webApp('📱 Mini App ochish', MINI_APP_URL)]
+    ]));
 });
 
 // /statistika komandasi (faqat admin)
@@ -728,28 +752,3 @@ initDB().then(() => {
 // Graceful stop
 process.once('SIGINT', () => bot.stop('SIGINT'));
 process.once('SIGTERM', () => bot.stop('SIGTERM'));
-// Express server — Mini App uchun
-const express = require('express');
-const app = express();
-const PORT = process.env.PORT || 3000;
-app.use(express.static(__dirname));
-app.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, 'miniapp.html'));
-});
-app.listen(PORT, () => {
-    console.log(`Mini App server: http://localhost:${PORT}`);
-});
-bot.hears('📱 Mini App', (ctx) => {
-    if (!MINI_APP_URL) return ctx.reply("Mini App sozlanmagan.");
-    ctx.reply('🚛 Yukla.uz:', Markup.inlineKeyboard([
-        [Markup.button.webApp('📱 Ochish', MINI_APP_URL)]
-    ]));
-});
-const express = require('express');
-const app = express();
-const PORT = process.env.PORT || 3000;
-app.use(express.static(__dirname));
-app.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, 'miniapp.html'));
-});
-app.listen(PORT, () => console.log(`Server: ${PORT}`));
