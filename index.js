@@ -575,7 +575,7 @@ const stage = new Scenes.Stage([orderWizard, searchWizard]);
 bot.use(session());
 // /start komandasi sahnadan oldin ushlanadi, bu so'rovnomalarni to'xtatadi
 bot.start((ctx) => {
-    ctx.session = null; // Sahnadan va keshdan chiqarib yuborish
+    ctx.session = {}; // Sahnadan va keshdan chiqarib yuborish
     addUser(ctx.from.id);
     const userName = ctx.from.first_name || 'Foydalanuvchi';
     const menuKeyboard = Markup.keyboard([
