@@ -628,8 +628,7 @@ bot.start((ctx) => {
     addUser(ctx.from.id);
     const userName = ctx.from.first_name || 'Foydalanuvchi';
     const menuKeyboard = Markup.keyboard([
-        ['📦 Yuk joylash', '🔍 Yuk topish'],
-        ['❌ Yukni bekor qilish', '📱 Mini App']
+        [ '📱 Mini App']
     ]).resize();
     ctx.reply(`Salom, ${userName}! Yukla Logistics botimizga xush kelibsiz! 🚛\nQuyidagi menyudan kerakli bo'limni tanlang:`, menuKeyboard);
 });
