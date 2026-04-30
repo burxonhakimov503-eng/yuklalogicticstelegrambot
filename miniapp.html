@@ -1,0 +1,1088 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Yukla Logistics</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;800;900&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --blue-dark:   #0A2540;
+    --blue-main:   #1565C0;
+    --blue-mid:    #1E88E5;
+    --blue-light:  #42A5F5;
+    --blue-pale:   #E3F2FD;
+    --white:       #FFFFFF;
+    --gray-light:  #F5F8FF;
+    --gray-mid:    #B0BEC5;
+    --gray-text:   #546E7A;
+    --accent:      #00B0FF;
+    --success:     #00C853;
+    --danger:      #FF1744;
+    --shadow:      0 4px 24px rgba(21,101,192,0.13);
+    --radius:      18px;
+    --radius-sm:   10px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+  body {
+    font-family: 'Inter', sans-serif;
+    background: var(--gray-light);
+    color: var(--blue-dark);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* ===== HEADER ===== */
+  .header {
+    background: linear-gradient(135deg, var(--blue-dark) 0%, var(--blue-main) 60%, var(--blue-mid) 100%);
+    padding: 24px 20px 32px;
+    position: relative;
+    overflow: hidden;
+  }
+  .header::before {
+    content: '';
+    position: absolute;
+    top: -40px; right: -40px;
+    width: 180px; height: 180px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.06);
+  }
+  .header::after {
+    content: '';
+    position: absolute;
+    bottom: -30px; left: 30px;
+    width: 120px; height: 120px;
+    border-radius: 50%;
+    background: rgba(0,176,255,0.10);
+  }
+  .logo-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 18px;
+    position: relative; z-index: 1;
+  }
+  .logo-icon {
+    width: 46px; height: 46px;
+    background: var(--accent);
+    border-radius: 14px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 24px;
+    box-shadow: 0 4px 16px rgba(0,176,255,0.35);
+  }
+  .logo-text {
+    font-family: 'Montserrat', sans-serif;
+    font-weight: 900;
+    font-size: 22px;
+    color: var(--white);
+    letter-spacing: -0.5px;
+  }
+  .logo-text span { color: var(--accent); }
+  .header-sub {
+    font-size: 12px;
+    color: rgba(255,255,255,0.6);
+    font-weight: 500;
+    letter-spacing: 0.5px;
+  }
+  .greeting {
+    position: relative; z-index: 1;
+    color: rgba(255,255,255,0.9);
+    font-size: 14px;
+    font-weight: 500;
+  }
+  .greeting strong {
+    color: var(--white);
+    font-family: 'Montserrat', sans-serif;
+    font-weight: 700;
+  }
+
+  /* ===== STATS BAR ===== */
+  .stats-bar {
+    display: flex;
+    gap: 10px;
+    padding: 0 16px;
+    margin-top: -18px;
+    position: relative; z-index: 10;
+  }
+  .stat-card {
+    flex: 1;
+    background: var(--white);
+    border-radius: var(--radius-sm);
+    padding: 14px 10px;
+    text-align: center;
+    box-shadow: var(--shadow);
+  }
+  .stat-num {
+    font-family: 'Montserrat', sans-serif;
+    font-weight: 800;
+    font-size: 22px;
+    color: var(--blue-main);
+    line-height: 1;
+  }
+  .stat-label {
+    font-size: 10px;
+    color: var(--gray-text);
+    margin-top: 4px;
+    font-weight: 500;
+  }
+
+  /* ===== NAV TABS ===== */
+  .nav-tabs {
+    display: flex;
+    gap: 8px;
+    padding: 20px 16px 8px;
+  }
+  .tab-btn {
+    flex: 1;
+    padding: 10px 6px;
+    border: none;
+    border-radius: var(--radius-sm);
+    font-family: 'Montserrat', sans-serif;
+    font-weight: 700;
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.2s;
+    background: var(--white);
+    color: var(--gray-text);
+    box-shadow: 0 2px 8px rgba(21,101,192,0.07);
+  }
+  .tab-btn.active {
+    background: linear-gradient(135deg, var(--blue-main), var(--blue-mid));
+    color: var(--white);
+    box-shadow: 0 4px 16px rgba(21,101,192,0.3);
+    transform: translateY(-1px);
+  }
+
+  /* ===== SECTIONS ===== */
+  .section { display: none; padding: 8px 16px 100px; }
+  .section.active { display: block; }
+
+  /* ===== SECTION TITLE ===== */
+  .sec-title {
+    font-family: 'Montserrat', sans-serif;
+    font-weight: 800;
+    font-size: 16px;
+    color: var(--blue-dark);
+    margin: 12px 0 14px;
+  }
+
+  /* ===== FORM ===== */
+  .form-card {
+    background: var(--white);
+    border-radius: var(--radius);
+    padding: 20px;
+    box-shadow: var(--shadow);
+    margin-bottom: 14px;
+  }
+  .form-group { margin-bottom: 16px; }
+  .form-group:last-child { margin-bottom: 0; }
+  .form-label {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--gray-text);
+    margin-bottom: 6px;
+    display: block;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  .form-input, .form-select {
+    width: 100%;
+    padding: 13px 15px;
+    border: 2px solid #E8EFF8;
+    border-radius: var(--radius-sm);
+    font-family: 'Inter', sans-serif;
+    font-size: 14px;
+    color: var(--blue-dark);
+    background: var(--gray-light);
+    outline: none;
+    transition: border-color 0.2s;
+    appearance: none;
+  }
+  .form-input:focus, .form-select:focus {
+    border-color: var(--blue-mid);
+    background: var(--white);
+  }
+  .form-row { display: flex; gap: 10px; }
+  .form-row .form-group { flex: 1; }
+
+  /* Select wrapper */
+  .select-wrap { position: relative; }
+  .select-wrap::after {
+    content: '▾';
+    position: absolute;
+    right: 14px; top: 50%;
+    transform: translateY(-50%);
+    color: var(--blue-mid);
+    pointer-events: none;
+    font-size: 16px;
+  }
+
+  /* Chip choices */
+  .chip-group { display: flex; flex-wrap: wrap; gap: 8px; }
+  .chip {
+    padding: 8px 14px;
+    border-radius: 100px;
+    border: 2px solid #E8EFF8;
+    background: var(--gray-light);
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--gray-text);
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .chip.selected {
+    background: var(--blue-pale);
+    border-color: var(--blue-mid);
+    color: var(--blue-main);
+  }
+
+  /* ===== BIG BUTTON ===== */
+  .btn-main {
+    width: 100%;
+    padding: 16px;
+    background: linear-gradient(135deg, var(--blue-main) 0%, var(--blue-mid) 100%);
+    color: var(--white);
+    border: none;
+    border-radius: var(--radius-sm);
+    font-family: 'Montserrat', sans-serif;
+    font-weight: 800;
+    font-size: 15px;
+    letter-spacing: 0.3px;
+    cursor: pointer;
+    box-shadow: 0 6px 20px rgba(21,101,192,0.3);
+    transition: all 0.2s;
+    margin-top: 6px;
+  }
+  .btn-main:active { transform: scale(0.98); opacity: 0.9; }
+
+  /* ===== LOAD CARDS ===== */
+  .load-card {
+    background: var(--white);
+    border-radius: var(--radius);
+    padding: 18px;
+    box-shadow: var(--shadow);
+    margin-bottom: 12px;
+    border-left: 4px solid var(--blue-mid);
+    animation: fadeUp 0.3s ease both;
+  }
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(14px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  .load-route {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+  .route-from, .route-to {
+    font-family: 'Montserrat', sans-serif;
+    font-weight: 800;
+    font-size: 14px;
+    color: var(--blue-dark);
+  }
+  .route-arrow {
+    color: var(--blue-light);
+    font-size: 18px;
+    flex: 1;
+    text-align: center;
+  }
+  .load-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 14px;
+  }
+  .meta-tag {
+    padding: 4px 10px;
+    border-radius: 100px;
+    background: var(--blue-pale);
+    color: var(--blue-main);
+    font-size: 11px;
+    font-weight: 600;
+  }
+  .meta-tag.green {
+    background: #E8F5E9;
+    color: #2E7D32;
+  }
+  .meta-tag.orange {
+    background: #FFF3E0;
+    color: #E65100;
+  }
+  .load-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .load-price {
+    font-family: 'Montserrat', sans-serif;
+    font-weight: 800;
+    font-size: 16px;
+    color: var(--blue-main);
+  }
+  .btn-contact {
+    padding: 9px 18px;
+    background: linear-gradient(135deg, var(--blue-main), var(--accent));
+    color: var(--white);
+    border: none;
+    border-radius: 100px;
+    font-family: 'Montserrat', sans-serif;
+    font-weight: 700;
+    font-size: 13px;
+    cursor: pointer;
+    box-shadow: 0 3px 12px rgba(21,101,192,0.25);
+    transition: all 0.15s;
+  }
+  .btn-contact:active { transform: scale(0.96); }
+
+  /* ===== EMPTY STATE ===== */
+  .empty {
+    text-align: center;
+    padding: 50px 20px;
+    color: var(--gray-mid);
+  }
+  .empty-icon { font-size: 52px; margin-bottom: 14px; }
+  .empty-text { font-size: 14px; font-weight: 500; color: var(--gray-text); }
+
+  /* ===== SEARCH BAR ===== */
+  .search-wrap {
+    position: relative;
+    margin-bottom: 14px;
+  }
+  .search-wrap input {
+    width: 100%;
+    padding: 13px 15px 13px 42px;
+    border: 2px solid #E8EFF8;
+    border-radius: var(--radius-sm);
+    font-size: 14px;
+    color: var(--blue-dark);
+    background: var(--white);
+    outline: none;
+    font-family: 'Inter', sans-serif;
+    transition: border-color 0.2s;
+  }
+  .search-wrap input:focus { border-color: var(--blue-mid); }
+  .search-icon {
+    position: absolute;
+    left: 14px; top: 50%;
+    transform: translateY(-50%);
+    color: var(--gray-mid);
+    font-size: 16px;
+  }
+
+  /* ===== PROFILE ===== */
+  .profile-card {
+    background: linear-gradient(135deg, var(--blue-dark), var(--blue-main));
+    border-radius: var(--radius);
+    padding: 24px 20px;
+    text-align: center;
+    margin-bottom: 14px;
+    box-shadow: var(--shadow);
+  }
+  .avatar {
+    width: 72px; height: 72px;
+    border-radius: 50%;
+    background: var(--accent);
+    margin: 0 auto 12px;
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'Montserrat', sans-serif;
+    font-weight: 900;
+    font-size: 28px;
+    color: var(--white);
+    box-shadow: 0 4px 16px rgba(0,176,255,0.4);
+  }
+  .profile-name {
+    font-family: 'Montserrat', sans-serif;
+    font-weight: 800;
+    font-size: 18px;
+    color: var(--white);
+    margin-bottom: 4px;
+  }
+  .profile-role {
+    font-size: 12px;
+    color: rgba(255,255,255,0.6);
+    font-weight: 500;
+  }
+  .profile-stats {
+    display: flex;
+    gap: 1px;
+    margin-top: 18px;
+    background: rgba(255,255,255,0.1);
+    border-radius: var(--radius-sm);
+    overflow: hidden;
+  }
+  .pstat {
+    flex: 1;
+    padding: 12px 6px;
+    text-align: center;
+    background: rgba(255,255,255,0.07);
+  }
+  .pstat-num {
+    font-family: 'Montserrat', sans-serif;
+    font-weight: 800;
+    font-size: 18px;
+    color: var(--white);
+  }
+  .pstat-label {
+    font-size: 10px;
+    color: rgba(255,255,255,0.55);
+    margin-top: 2px;
+    font-weight: 500;
+  }
+
+  .menu-item {
+    background: var(--white);
+    border-radius: var(--radius-sm);
+    padding: 16px 18px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin-bottom: 10px;
+    box-shadow: 0 2px 8px rgba(21,101,192,0.06);
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .menu-item:active { background: var(--blue-pale); }
+  .menu-icon {
+    width: 40px; height: 40px;
+    border-radius: 10px;
+    background: var(--blue-pale);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px;
+    flex-shrink: 0;
+  }
+  .menu-label {
+    font-family: 'Montserrat', sans-serif;
+    font-weight: 700;
+    font-size: 14px;
+    color: var(--blue-dark);
+  }
+  .menu-sub {
+    font-size: 12px;
+    color: var(--gray-text);
+    margin-top: 2px;
+  }
+  .menu-arrow {
+    margin-left: auto;
+    color: var(--gray-mid);
+    font-size: 18px;
+  }
+
+  /* ===== TOAST ===== */
+  .toast {
+    position: fixed;
+    bottom: 90px; left: 50%;
+    transform: translateX(-50%) translateY(20px);
+    background: var(--blue-dark);
+    color: var(--white);
+    padding: 12px 24px;
+    border-radius: 100px;
+    font-size: 13px;
+    font-weight: 600;
+    opacity: 0;
+    transition: all 0.3s;
+    pointer-events: none;
+    z-index: 999;
+    white-space: nowrap;
+  }
+  .toast.show {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+
+  /* ===== BOTTOM NAV ===== */
+  .bottom-nav {
+    position: fixed;
+    bottom: 0; left: 0; right: 0;
+    background: var(--white);
+    border-top: 1px solid #E8EFF8;
+    display: flex;
+    padding: 8px 0 max(8px, env(safe-area-inset-bottom));
+    z-index: 100;
+    box-shadow: 0 -4px 20px rgba(21,101,192,0.08);
+  }
+  .nav-item {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    padding: 6px 4px;
+    cursor: pointer;
+    transition: all 0.15s;
+    border: none;
+    background: none;
+  }
+  .nav-item .nav-icon { font-size: 22px; }
+  .nav-item .nav-label {
+    font-family: 'Montserrat', sans-serif;
+    font-weight: 700;
+    font-size: 10px;
+    color: var(--gray-mid);
+    transition: color 0.15s;
+  }
+  .nav-item.active .nav-label { color: var(--blue-main); }
+  .nav-dot {
+    width: 4px; height: 4px;
+    border-radius: 50%;
+    background: var(--blue-main);
+    margin: 0 auto;
+    opacity: 0;
+    transition: opacity 0.15s;
+  }
+  .nav-item.active .nav-dot { opacity: 1; }
+
+  /* Step indicator */
+  .step-bar {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 18px;
+  }
+  .step-dot {
+    flex: 1;
+    height: 4px;
+    border-radius: 2px;
+    background: #E8EFF8;
+    transition: background 0.3s;
+  }
+  .step-dot.done { background: var(--blue-mid); }
+  .step-dot.active { background: var(--accent); }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="header">
+  <div class="logo-row">
+    <div class="logo-icon">🚛</div>
+    <div>
+      <div class="logo-text">YUKLA Logictics</div>
+      <div class="header-sub">Logictics platform</div>
+    </div>
+  </div>
+  <div class="greeting">Salom, <strong id="userName">Foydalanuvchi</strong> 👋</div>
+</div>
+
+<!-- STATS -->
+<div class="stats-bar">
+  <div class="stat-card">
+    <div class="stat-num" id="statLoads">0</div>
+    <div class="stat-label">Faol yuklar</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-num" id="statRoutes">7</div>
+    <div class="stat-label">Yo'nalish</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-num" id="statDrivers">0</div>
+    <div class="stat-label">Haydovchi</div>
+  </div>
+</div>
+
+
+
+<!-- ===== LOADS TAB ===== -->
+<div class="section active" id="tab-loads">
+  <div class="sec-title">🔥 So'nggi yuklar</div>
+  <div id="loadsList"></div>
+</div>
+
+<!-- ===== ADD TAB ===== -->
+<div class="section" id="tab-add">
+  <div class="sec-title">📦 Yangi yuk joylash</div>
+
+  <div class="step-bar">
+    <div class="step-dot active" id="s1"></div>
+    <div class="step-dot" id="s2"></div>
+    <div class="step-dot" id="s3"></div>
+  </div>
+
+  <div class="form-card">
+    <div class="form-group">
+      <label class="form-label">📦 Yuk turi</label>
+      <input class="form-input" id="yukTuri" placeholder="Masalan: Mebel, qurilish mollari..." />
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">📍 Qayerdan</label>
+        <div class="select-wrap">
+          <select class="form-select" id="qayerdan">
+            <option value="">Tanlang</option>
+            <optgroup label="🇺🇿 O'zbekiston">
+              <option>Toshkent Poytaxt</option><option>Samarqand</option><option>Andijon</option>
+              <option>Buxoro</option><option>Farg'ona</option><option>Namangan</option>
+              <option>Xorazm</option><option>Qashqadaryo</option><option>Surxondaryo</option>
+              <option>Navoiy</option><option>Sirdaryo</option><option>Jizzax</option><option>Qoraqalpog'iston Respublikasi</option>
+              <option>Toshkent Viloyati</option>
+            </optgroup>
+            <optgroup label="🇷🇺 Rossiya">
+              <option>Moskva</option><option>Sankt-Peterburg</option><option></option>
+            </optgroup>
+            <optgroup label="🇰🇿 Qozog'iston">
+              <option>Astana</option><option>Olmaota</option>
+            </optgroup>
+          </select>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">🏁 Qayerga</label>
+        <div class="select-wrap">
+          <select class="form-select" id="qayerga">
+            <option value="">Tanlang</option>
+            <optgroup label="🇺🇿 O'zbekiston">
+              <option>Toshkent</option><option>Samarqand</option><option>Andijon</option>
+              <option>Buxoro</option><option>Farg'ona</option><option>Namangan</option>
+              <option>Xorazm</option><option>Qashqadaryo</option><option>Surxondaryo</option>
+            </optgroup>
+            <optgroup label="🇷🇺 Rossiya">
+              <option>Moskva</option><option>Sankt-Peterburg</option>
+            </optgroup>
+            <optgroup label="🇰🇿 Qozog'iston">
+              <option>Astana</option><option>Olmaota</option>
+            </optgroup>
+          </select>
+        </div>
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">⚖️ Og'irligi va hajmi</label>
+      <input class="form-input" id="hajm" placeholder="Masalan: 10 tonna, 40 kub..." />
+    </div>
+  </div>
+
+  <div class="form-card">
+    <div class="form-group">
+      <label class="form-label">🚛 Transport turi</label>
+      <div class="chip-group" id="carChips">
+        <div class="chip" onclick="selectChip(this,'car')">Fura</div>
+        <div class="chip" onclick="selectChip(this,'car')">Isuzu 5t</div>
+        <div class="chip" onclick="selectChip(this,'car')">Isuzu 10t</div>
+        <div class="chip" onclick="selectChip(this,'car')">Chakman</div>
+        <div class="chip" onclick="selectChip(this,'car')">Fura Tent</div>
+        <div class="chip" onclick="selectChip(this,'car')">Fura Ref</div>
+        <div class="chip" onclick="selectChip(this,'car')">Boshqa</div>
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">📅 Yuklanish sanasi</label>
+      <div class="chip-group" id="dateChips">
+        <div class="chip" onclick="selectChip(this,'date')">Bugun</div>
+        <div class="chip" onclick="selectChip(this,'date')">Ertaga</div>
+        <div class="chip" onclick="selectChip(this,'date')">Indinga</div>
+        <div class="chip" onclick="selectChip(this,'date')">Tayyor</div>
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">💳 To'lov turi</label>
+      <div class="chip-group" id="payChips">
+        <div class="chip" onclick="selectChip(this,'pay')">Naqd</div>
+        <div class="chip" onclick="selectChip(this,'pay')">Kartaga</div>
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">💰 Narx (so'm yoki $)</label>
+      <input class="form-input" id="narx" placeholder="Masalan: 500 000 so'm yoki kelishiladi" />
+    </div>
+    <div class="form-group">
+      <label class="form-label">📞 Telefon raqam</label>
+      <input class="form-input" id="telefon" type="tel" placeholder="+998 90 123 45 67" />
+    </div>
+  </div>
+
+  <button class="btn-main" onclick="submitLoad()">🚀 Yukni joylash</button>
+</div>
+
+<!-- ===== SEARCH TAB ===== -->
+<div class="section" id="tab-search">
+  <div class="sec-title">🔍 Yuk qidirish</div>
+  <div class="search-wrap">
+    <span class="search-icon">🔍</span>
+    <input type="text" id="searchInput" placeholder="Yo'nalish, yuk turi..." oninput="filterLoads()" />
+  </div>
+  <div class="form-row" style="margin-bottom:14px;">
+    <div class="form-group">
+      <div class="select-wrap">
+        <select class="form-select" id="filterFrom" onchange="filterLoads()">
+          <option value="">Qayerdan</option>
+          <option>Toshkent</option><option>Samarqand</option><option>Andijon</option>
+          <option>Buxoro</option><option>Farg'ona</option><option>Namangan</option>
+          <option>Moskva</option><option>Astana</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-group">
+      <div class="select-wrap">
+        <select class="form-select" id="filterTo" onchange="filterLoads()">
+          <option value="">Qayerga</option>
+          <option>Toshkent</option><option>Samarqand</option><option>Andijon</option>
+          <option>Buxoro</option><option>Farg'ona</option><option>Namangan</option>
+          <option>Moskva</option><option>Astana</option>
+        </select>
+      </div>
+    </div>
+  </div>
+  <div id="searchResults"></div>
+</div>
+
+<!-- ===== PROFILE TAB ===== -->
+<div class="section" id="tab-profile">
+  <div class="sec-title">👤 Profil</div>
+  <div class="profile-card">
+    <div class="avatar" id="avatarLetter">U</div>
+    <div class="profile-name" id="profileName">Foydalanuvchi</div>
+    <div class="profile-role">Yukla.uz a'zosi</div>
+    <div class="profile-stats">
+      <div class="pstat">
+        <div class="pstat-num" id="myLoadsCount">0</div>
+        <div class="pstat-label">Yuklarim</div>
+      </div>
+      <div class="pstat">
+        <div class="pstat-num">0</div>
+        <div class="pstat-label">Bitimlar</div>
+      </div>
+      <div class="pstat">
+        <div class="pstat-num">⭐ 5.0</div>
+        <div class="pstat-label">Reyting</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="menu-item" onclick="toggleMyLoads()">
+    <div class="menu-icon">📦</div>
+    <div>
+      <div class="menu-label">Mening yuklarim</div>
+      <div class="menu-sub">Joylashtirilgan yuklar</div>
+    </div>
+    <div class="menu-arrow" id="myLoadsArrow">›</div>
+  </div>
+  <div id="myLoadsContainer" style="display: none; padding-bottom: 20px;"></div>
+  <div class="menu-item" onclick="showToast('Tarix ochilmoqda...')">
+    <div class="menu-icon">📋</div>
+    <div>
+      <div class="menu-label">Buyurtmalar tarixi</div>
+      <div class="menu-sub">O'tgan bitimlar</div>
+    </div>
+    <div class="menu-arrow">›</div>
+  </div>
+  <div class="menu-item" onclick="showToast('Sozlamalar ochilmoqda...')">
+    <div class="menu-icon">⚙️</div>
+    <div>
+      <div class="menu-label">Sozlamalar</div>
+      <div class="menu-sub">Bildirishnoma, til</div>
+    </div>
+    <div class="menu-arrow">›</div>
+  </div>
+  <div class="menu-item" onclick="openTelegramBot()">
+    <div class="menu-icon">🤖</div>
+    <div>
+      <div class="menu-label">Botga o'tish</div>
+      <div class="menu-sub">Telegram bot orqali buyurtma</div>
+    </div>
+    <div class="menu-arrow">›</div>
+  </div>
+</div>
+
+<!-- BOTTOM NAV -->
+<div class="bottom-nav">
+  <button class="nav-item active" onclick="switchNav(this,'loads')">
+    <span class="nav-icon">📋</span>
+    <span class="nav-label">Yuklar</span>
+    <div class="nav-dot"></div>
+  </button>
+  <button class="nav-item" onclick="switchNav(this,'add')">
+    <span class="nav-icon">➕</span>
+    <span class="nav-label">Qo'sh</span>
+    <div class="nav-dot"></div>
+  </button>
+  <button class="nav-item" onclick="switchNav(this,'search')">
+    <span class="nav-icon">🔍</span>
+    <span class="nav-label">Qidirish</span>
+    <div class="nav-dot"></div>
+  </button>
+  <button class="nav-item" onclick="switchNav(this,'profile')">
+    <span class="nav-icon">👤</span>
+    <span class="nav-label">Profil</span>
+    <div class="nav-dot"></div>
+  </button>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<script>
+// ===== TELEGRAM INIT =====
+const tg = window.Telegram?.WebApp;
+if (tg) {
+  tg.ready();
+  tg.expand();
+  const user = tg.initDataUnsafe?.user;
+  if (user) {
+    const name = user.first_name || 'Foydalanuvchi';
+    document.getElementById('userName').textContent = name;
+    document.getElementById('profileName').textContent = name + ' ' + (user.last_name || '');
+    document.getElementById('avatarLetter').textContent = name[0].toUpperCase();
+  }
+}
+
+// ===== DEMO DATA =====
+let loads = [];
+let selectedCar = '';
+let selectedDate = '';
+let selectedPay = '';
+
+let userId = 123456789; // Default for testing
+if (tg && tg.initDataUnsafe && tg.initDataUnsafe.user) {
+    userId = tg.initDataUnsafe.user.id;
+}
+
+const API_URL = ''; // relative
+
+async function fetchLoads() {
+  try {
+    const res = await fetch(`${API_URL}/api/loads`);
+    if(res.ok) {
+      loads = await res.json();
+      loads.reverse(); // Show latest first
+      updateStats();
+      
+      const activeTabId = document.querySelector('.section.active')?.id;
+      if (activeTabId === 'tab-loads') {
+        renderLoads(loads, 'loadsList');
+      } else if (activeTabId === 'tab-search') {
+        filterLoads();
+      }
+      
+      if (document.getElementById('myLoadsContainer') && document.getElementById('myLoadsContainer').style.display === 'block') {
+        renderMyLoads();
+      }
+    }
+  } catch (e) {
+    console.error('API Error:', e);
+  }
+}
+setInterval(fetchLoads, 5000);
+
+// ===== RENDER LOADS =====
+function renderLoads(list, containerId) {
+  const el = document.getElementById(containerId);
+  if (!list.length) {
+    el.innerHTML = `<div class="empty"><div class="empty-icon">📭</div><div class="empty-text">Hozircha yuk yo'q</div></div>`;
+    return;
+  }
+  el.innerHTML = list.map((l, i) => `
+    <div class="load-card" style="animation-delay:${i*0.07}s">
+      <div class="load-route">
+        <div class="route-from">📍 ${l.qayerdan}</div>
+        <div class="route-arrow">→</div>
+        <div class="route-to">🏁 ${l.qayerga}</div>
+      </div>
+      <div class="load-meta">
+        <span class="meta-tag">📦 ${l.yuk_turi || l.yukTuri}</span>
+        <span class="meta-tag">🚛 ${l.mashina_turi || l.mashina}</span>
+        <span class="meta-tag green">📅 ${l.sana}</span>
+        <span class="meta-tag orange">⚖️ ${l.hajm_ogirlik || l.hajm}</span>
+        <span class="meta-tag">💳 ${l.tolov_turi || l.tolov}</span>
+      </div>
+      <div class="load-footer">
+        <div class="load-price">💰 ${l.narx}</div>
+        <button class="btn-contact" onclick="contact('${l.telefon || l.tel}')">📞 Bog'lanish</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+function updateStats() {
+  document.getElementById('statLoads').textContent = loads.length;
+  document.getElementById('statDrivers').textContent = loads.length;
+  document.getElementById('myLoadsCount').textContent = loads.length;
+}
+
+// ===== CHIP SELECT =====
+function selectChip(el, group) {
+  document.querySelectorAll(`#${group === 'car' ? 'carChips' : group === 'date' ? 'dateChips' : 'payChips'} .chip`)
+    .forEach(c => c.classList.remove('selected'));
+  el.classList.add('selected');
+  if (group === 'car') selectedCar = el.textContent;
+  if (group === 'date') selectedDate = el.textContent;
+  if (group === 'pay') selectedPay = el.textContent;
+}
+
+// ===== SUBMIT LOAD =====
+async function submitLoad() {
+  const yukTuri = document.getElementById('yukTuri').value.trim();
+  const qayerdan = document.getElementById('qayerdan').value;
+  const qayerga = document.getElementById('qayerga').value;
+  const hajm = document.getElementById('hajm').value.trim();
+  const narx = document.getElementById('narx').value.trim() || 'Kelishiladi';
+  const tel = document.getElementById('telefon').value.trim();
+
+  if (!yukTuri || !qayerdan || !qayerga || !hajm || !selectedCar || !selectedDate || !selectedPay) {
+    showToast('⚠️ Barcha maydonlarni to\'ldiring!');
+    return;
+  }
+
+  const newLoad = {
+    yuk_turi: yukTuri, qayerdan, qayerga, hajm_ogirlik: hajm,
+    mashina_turi: selectedCar, sana: selectedDate,
+    tolov_turi: selectedPay, narx, telefon: tel || '+998901234567',
+    buyurtmachi_id: userId
+  };
+
+  const btn = document.querySelector('.btn-main');
+  btn.disabled = true;
+  btn.textContent = 'Yuklanmoqda...';
+
+  try {
+    const res = await fetch(`${API_URL}/api/loads`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(newLoad)
+    });
+    if(res.ok) {
+      await fetchLoads();
+      // Formani tozalash
+      ['yukTuri','hajm','narx','telefon'].forEach(id => document.getElementById(id).value = '');
+      document.getElementById('qayerdan').value = '';
+      document.getElementById('qayerga').value = '';
+      document.querySelectorAll('.chip').forEach(c => c.classList.remove('selected'));
+      selectedCar = selectedDate = selectedPay = '';
+
+      showToast('✅ Yuk muvaffaqiyatli joylashtirildi!');
+      switchNavDirect('loads');
+    } else {
+      showToast('❌ Xatolik yuz berdi');
+    }
+  } catch(e) {
+    showToast('❌ Tarmoq xatosi');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '🚀 Yukni joylash';
+  }
+}
+
+// ===== SEARCH =====
+function filterLoads() {
+  const q = document.getElementById('searchInput').value.toLowerCase();
+  const from = document.getElementById('filterFrom').value;
+  const to = document.getElementById('filterTo').value;
+
+  const filtered = loads.filter(l => {
+    const yTuri = l.yuk_turi || l.yukTuri || '';
+    const matchQ = !q || yTuri.toLowerCase().includes(q) ||
+      l.qayerdan.toLowerCase().includes(q) || l.qayerga.toLowerCase().includes(q);
+    const matchFrom = !from || l.qayerdan === from;
+    const matchTo = !to || l.qayerga === to;
+    return matchQ && matchFrom && matchTo;
+  });
+
+  renderLoads(filtered, 'searchResults');
+}
+
+// ===== CONTACT =====
+function contact(tel) {
+  showToast('📞 ' + tel);
+  if (tg) tg.openLink('tel:' + tel);
+}
+
+function openTelegramBot() {
+  if (tg) tg.openTelegramLink('https://t.me/yuklalogicsticbot');
+  else showToast('Botga o\'tish...');
+}
+
+// ===== TAB SWITCH =====
+function showTab(name) {
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('tab-' + name).classList.add('active');
+
+  if (name === 'search') filterLoads();
+}
+
+function switchNav(btn, name) {
+  document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  showTab(name);
+}
+
+function switchNavDirect(name) {
+  document.querySelectorAll('.nav-item').forEach((b, i) => {
+    const tabs = ['loads','add','search','profile'];
+    b.classList.toggle('active', tabs[i] === name);
+  });
+  showTab(name);
+}
+
+// ===== TOAST =====
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+// ===== MY LOADS =====
+function toggleMyLoads() {
+  const container = document.getElementById('myLoadsContainer');
+  const arrow = document.getElementById('myLoadsArrow');
+  if (container.style.display === 'none') {
+    container.style.display = 'block';
+    arrow.style.transform = 'rotate(90deg)';
+    renderMyLoads();
+  } else {
+    container.style.display = 'none';
+    arrow.style.transform = 'rotate(0deg)';
+  }
+}
+
+function renderMyLoads() {
+  const container = document.getElementById('myLoadsContainer');
+  const myLoads = loads.filter(l => l.buyurtmachi_id == userId);
+  
+  if (myLoads.length === 0) {
+    container.innerHTML = `<div class="empty" style="padding: 20px;"><div class="empty-text">Sizda faol yuklar yo'q.</div></div>`;
+    return;
+  }
+  
+  container.innerHTML = myLoads.map((l, i) => `
+    <div class="load-card" style="margin-top: 10px;">
+      <div class="load-route">
+        <div class="route-from">📍 ${l.qayerdan}</div>
+        <div class="route-arrow">→</div>
+        <div class="route-to">🏁 ${l.qayerga}</div>
+      </div>
+      <div class="load-meta">
+        <span class="meta-tag">📦 ${l.yuk_turi || l.yukTuri}</span>
+        <span class="meta-tag">💰 ${l.narx}</span>
+      </div>
+      <div class="load-footer" style="justify-content: flex-end;">
+        <button class="btn-contact" style="background: var(--danger);" onclick="deleteLoad('${l.id}')">🗑️ O'chirish</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+async function deleteLoad(id) {
+  if (!confirm("Rostdan ham bu yukni o'chirmoqchimisiz?")) return;
+  try {
+    const res = await fetch(`${API_URL}/api/loads/${id}?userId=${userId}`, { method: 'DELETE' });
+    if(res.ok) {
+      showToast("✅ Yuk o'chirildi");
+      fetchLoads();
+    } else {
+      showToast("❌ Xatolik yuz berdi");
+    }
+  } catch(e) {
+    showToast("❌ Tarmoq xatosi");
+  }
+}
+
+// ===== INIT =====
+fetchLoads();
+filterLoads();
+updateStats();
+</script>
+</body>
+</html>
