@@ -4,13 +4,104 @@ const fs = require('fs');
 const path = require('path');
 const express = require('express');
 
+const cors = require('cors');
+
 // Express server — Mini App uchun
 const app = express();
 const PORT = process.env.PORT || 3000;
+app.use(cors());
+app.use(express.json());
 app.use(express.static(__dirname));
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'miniapp.html'));
 });
+
+// --- API Endpoints for Mini App ---
+app.get('/api/loads', (req, res) => {
+    const data = readData();
+    res.json(data.loads || []);
+});
+
+app.post('/api/loads', async (req, res) => {
+    const order = req.body;
+    order.id = Date.now().toString();
+    addOrder(order);
+
+    const loadText = formatLoadText(order, "🔥 DIQQAT YUK ! (Mini App dan)");
+    const inlineKeyboard = Markup.inlineKeyboard([
+        [Markup.button.url("💬 Telegram orqali yozish", `tg://user?id=${order.buyurtmachi_id}`)]
+    ]);
+
+    const data = readData();
+    const promises = [];
+
+    if (process.env.ADMIN_CHAT_ID) {
+        promises.push(
+            bot.telegram.sendMessage(process.env.ADMIN_CHAT_ID, loadText, { parse_mode: 'HTML', ...inlineKeyboard })
+                .then(msg => ({ chat_id: process.env.ADMIN_CHAT_ID, message_id: msg.message_id }))
+                .catch(err => null)
+        );
+    }
+
+    if (process.env.CHANNEL_ID) {
+        promises.push(postToChannel(loadText, inlineKeyboard));
+    }
+
+    for (const userId of data.users) {
+        if (userId != order.buyurtmachi_id) {
+            promises.push(
+                bot.telegram.sendMessage(userId, loadText, { parse_mode: 'HTML', ...inlineKeyboard })
+                    .then(msg => ({ chat_id: userId, message_id: msg.message_id }))
+                    .catch(e => null)
+            );
+        }
+    }
+
+    Promise.all(promises).then(results => {
+        const validBroadcasts = results.filter(r => r !== null);
+        if (validBroadcasts.length > 0) {
+            const currentData = readData();
+            const targetOrder = currentData.loads.find(l => l.id === order.id);
+            if (targetOrder) {
+                if (!targetOrder.broadcasts) targetOrder.broadcasts = [];
+                targetOrder.broadcasts.push(...validBroadcasts);
+                writeData(currentData);
+            }
+        }
+    });
+
+    res.json({ success: true, order });
+});
+
+app.delete('/api/loads/:id', async (req, res) => {
+    const { id } = req.params;
+    const { userId } = req.query;
+    const data = readData();
+    const loadIndex = data.loads.findIndex(l => l.id === id);
+    
+    if (loadIndex === -1) {
+        return res.json({ success: false, error: "Yuk topilmadi" });
+    }
+    
+    const load = data.loads[loadIndex];
+    if (load.buyurtmachi_id != userId) {
+        return res.status(403).json({ success: false, error: "Huquq yo'q" });
+    }
+    
+    if (load.broadcasts) {
+        for (const b of load.broadcasts) {
+            try {
+                await bot.telegram.deleteMessage(b.chat_id, b.message_id);
+            } catch(e) {}
+        }
+    }
+    
+    data.loads.splice(loadIndex, 1);
+    writeData(data);
+    res.json({ success: true });
+});
+// ----------------------------------
+
 app.listen(PORT, () => {
     console.log(`Mini App server ishga tushdi: http://localhost:${PORT}`);
 });
@@ -629,7 +720,7 @@ bot.start((ctx) => {
     const userName = ctx.from.first_name || 'Foydalanuvchi';
     const menuKeyboard = Markup.keyboard([
         ['📦 Yuk joylash', '🔍 Yuk topish'],
-        ['❌ Yukni bekor qilish', '📱 Mini App']
+        ['❌ Yukni bekor qilish', Markup.button.webApp('📱 Mini App', MINI_APP_URL || 'https://google.com')]
     ]).resize();
     ctx.reply(`Salom, ${userName}! Yukla Logistics botimizga xush kelibsiz! 🚛\nQuyidagi menyudan kerakli bo'limni tanlang:`, menuKeyboard);
 });
