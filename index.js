@@ -376,7 +376,7 @@ const orderWizard = new Scenes.WizardScene(
         // Bosh menyuga qaytish
         const menuKeyboard = Markup.keyboard([
             ['📦 Yuk joylash', '🔍 Yuk topish'],
-            ['❌ Yukni bekor qilish']
+            ['❌ Yukni bekor qilish','Mini apps']
         ]).resize();
         await ctx.reply("Yana yuk joylash uchun pastdagi tugmani bosing.", menuKeyboard);
         
@@ -580,7 +580,7 @@ bot.start((ctx) => {
     const userName = ctx.from.first_name || 'Foydalanuvchi';
     const menuKeyboard = Markup.keyboard([
         ['📦 Yuk joylash', '🔍 Yuk topish'],
-        ['❌ Yukni bekor qilish']
+        ['❌ Yukni bekor qilish','Mini apps']
     ]).resize();
 
     ctx.reply(`Salom, ${userName}! Logistika botimizga xush kelibsiz.\nQuyidagi menyudan kerakli bo'limni tanlang:`, menuKeyboard);
