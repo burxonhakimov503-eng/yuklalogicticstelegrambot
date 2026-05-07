@@ -27,48 +27,7 @@ app.post('/api/loads', async (req, res) => {
     order.id = Date.now().toString();
     addOrder(order);
 
-    const loadText = formatLoadText(order, "🔥 DIQQAT YUK ! (Mini App dan)");
-    const inlineKeyboard = Markup.inlineKeyboard([
-        [Markup.button.url("💬 Telegram orqali yozish", `tg://user?id=${order.buyurtmachi_id}`)]
-    ]);
-
-    const data = readData();
-    const promises = [];
-
-    if (process.env.ADMIN_CHAT_ID) {
-        promises.push(
-            bot.telegram.sendMessage(process.env.ADMIN_CHAT_ID, loadText, { parse_mode: 'HTML', ...inlineKeyboard })
-                .then(msg => ({ chat_id: process.env.ADMIN_CHAT_ID, message_id: msg.message_id }))
-                .catch(err => null)
-        );
-    }
-
-    if (process.env.CHANNEL_ID) {
-        promises.push(postToChannel(loadText, inlineKeyboard));
-    }
-
-    for (const userId of data.users) {
-        if (userId != order.buyurtmachi_id) {
-            promises.push(
-                bot.telegram.sendMessage(userId, loadText, { parse_mode: 'HTML', ...inlineKeyboard })
-                    .then(msg => ({ chat_id: userId, message_id: msg.message_id }))
-                    .catch(e => null)
-            );
-        }
-    }
-
-    Promise.all(promises).then(results => {
-        const validBroadcasts = results.filter(r => r !== null);
-        if (validBroadcasts.length > 0) {
-            const currentData = readData();
-            const targetOrder = currentData.loads.find(l => l.id === order.id);
-            if (targetOrder) {
-                if (!targetOrder.broadcasts) targetOrder.broadcasts = [];
-                targetOrder.broadcasts.push(...validBroadcasts);
-                writeData(currentData);
-            }
-        }
-    });
+    broadcastLoad(order, "🔥 DIQQAT YUK ! (Mini App dan)");
 
     res.json({ success: true, order });
 });
@@ -152,7 +111,7 @@ if (process.env.DATABASE_URL) {
     });
 }
 
-let memoryData = { users: [], orders: 0, loads: [] };
+let memoryData = { users: [], orders: 0, loads: [], userProfiles: {} };
 
 const dataFile = path.join(__dirname, 'data.json');
 
@@ -161,6 +120,7 @@ async function initDB() {
         if (fs.existsSync(dataFile)) {
             memoryData = JSON.parse(fs.readFileSync(dataFile, 'utf8'));
             if (!memoryData.loads) memoryData.loads = [];
+            if (!memoryData.userProfiles) memoryData.userProfiles = {};
         }
         return;
     }
@@ -176,6 +136,7 @@ async function initDB() {
     if (res.rows.length > 0) {
         memoryData = res.rows[0].data;
         if (!memoryData.loads) memoryData.loads = [];
+        if (!memoryData.userProfiles) memoryData.userProfiles = {};
     } else {
         await pool.query('INSERT INTO app_state (id, data) VALUES (1, $1)', [memoryData]);
     }
@@ -202,6 +163,16 @@ function addUser(userId) {
         data.users.push(userId);
         writeData(data);
     }
+}
+
+function saveUserProfile(user) {
+    const data = readData();
+    if (!data.userProfiles) data.userProfiles = {};
+    data.userProfiles[user.id] = user;
+    if (!data.users.includes(user.id)) {
+        data.users.push(user.id);
+    }
+    writeData(data);
 }
 
 function addOrder(order) {
@@ -309,7 +280,6 @@ function escapeHTML(text) {
 
 // FIX: sana maydoni qo'shildi
 function formatLoadText(order, title) {
-    const phone = (order.telefon || '').startsWith('+') ? order.telefon : '+' + order.telefon;
     return `
 ${title}
 
@@ -321,7 +291,6 @@ ${title}
 ⚖️ Og'irligi va hajmi: ${escapeHTML(order.hajm_ogirlik)}
 💰 Narx: ${escapeHTML(order.narx)}
 💳 To'lov turi: ${escapeHTML(order.tolov_turi)}
-📞 Aloqa: <a href="tel:${escapeHTML(phone)}">${escapeHTML(phone)}</a>
     `;
 }
 
@@ -358,6 +327,68 @@ async function postToChannel(loadText, inlineKeyboard) {
     }
 }
 
+async function broadcastLoad(order, title) {
+    const loadText = formatLoadText(order, title);
+    
+    const data = readData();
+    let phone = order.telefon;
+    let username = "";
+    if (data.userProfiles && data.userProfiles[order.buyurtmachi_id]) {
+        phone = phone || data.userProfiles[order.buyurtmachi_id].phone;
+        username = data.userProfiles[order.buyurtmachi_id].username;
+    }
+    
+    const formattedPhone = (phone || '').startsWith('+') ? phone : '+' + phone;
+    
+    const buttons = [];
+    if (formattedPhone && formattedPhone !== '+') {
+        buttons.push(Markup.button.url("📞 Bog'lanish", `tel:${formattedPhone}`));
+    }
+    if (username) {
+        buttons.push(Markup.button.url("💬 Telegram", `https://t.me/${username}`));
+    } else {
+        buttons.push(Markup.button.url("💬 Telegram", `tg://user?id=${order.buyurtmachi_id}`));
+    }
+    
+    const inlineKeyboard = Markup.inlineKeyboard([buttons]);
+    const promises = [];
+
+    if (ADMIN_CHAT_ID) {
+        promises.push(
+            bot.telegram.sendMessage(ADMIN_CHAT_ID, loadText, { parse_mode: 'HTML', ...inlineKeyboard })
+                .then(msg => ({ chat_id: ADMIN_CHAT_ID, message_id: msg.message_id }))
+                .catch(() => null)
+        );
+    }
+    if (CHANNEL_ID) promises.push(postToChannel(loadText, inlineKeyboard));
+
+    for (const userId of data.users) {
+        if (userId != order.buyurtmachi_id) {
+            promises.push(
+                bot.telegram.sendMessage(userId, loadText, { parse_mode: 'HTML', ...inlineKeyboard })
+                    .then(msg => ({ chat_id: userId, message_id: msg.message_id }))
+                    .catch(() => null)
+            );
+        }
+    }
+
+    const results = await Promise.all(promises);
+    const validBroadcasts = results.filter(r => r !== null);
+    if (validBroadcasts.length > 0) {
+        const currentData = readData();
+        const targetOrder = currentData.loads.find(l => l.id === order.id);
+        if (targetOrder) {
+            if (!targetOrder.broadcasts) targetOrder.broadcasts = [];
+            targetOrder.broadcasts.push(...validBroadcasts);
+            writeData(currentData);
+        }
+    }
+}
+
+const requireCallback = async (ctx) => {
+    if (ctx.message) await ctx.reply("⚠️ Iltimos, faqat tugmalardan foydalaning!");
+};
+
 // ----- SCENE: YUK JOYLASH -----
 const orderWizard = new Scenes.WizardScene(
     'ORDER_WIZARD',
@@ -381,20 +412,10 @@ const orderWizard = new Scenes.WizardScene(
     },
 
     // Qadam 2: Qayerdan kutish (faqat callback)
-    async (ctx) => {
-        if (ctx.message) {
-            await ctx.reply("⚠️ Iltimos, faqat tugmalardan foydalaning!");
-        }
-        return;
-    },
+    requireCallback,
 
     // Qadam 3: Qayerga kutish (faqat callback)
-    async (ctx) => {
-        if (ctx.message) {
-            await ctx.reply("⚠️ Iltimos, faqat tugmalardan foydalaning!");
-        }
-        return;
-    },
+    requireCallback,
 
     // Qadam 4: Hajm va og'irlik
     async (ctx) => {
@@ -415,28 +436,13 @@ const orderWizard = new Scenes.WizardScene(
     },
 
     // Qadam 5: Mashina turi (faqat callback)
-    async (ctx) => {
-        if (ctx.message) {
-            await ctx.reply("⚠️ Iltimos, faqat tugmalardan foydalaning!");
-        }
-        return;
-    },
+    requireCallback,
 
     // Qadam 6: Sana (faqat callback)
-    async (ctx) => {
-        if (ctx.message) {
-            await ctx.reply("⚠️ Iltimos, faqat tugmalardan foydalaning!");
-        }
-        return;
-    },
+    requireCallback,
 
     // Qadam 7: To'lov turi (faqat callback)
-    async (ctx) => {
-        if (ctx.message) {
-            await ctx.reply("⚠️ Iltimos, faqat tugmalardan foydalaning!");
-        }
-        return;
-    },
+    requireCallback,
 
     // Qadam 8: Narx
     async (ctx) => {
@@ -473,57 +479,15 @@ const orderWizard = new Scenes.WizardScene(
         const order = ctx.wizard.state.order;
         addOrder(order);
 
-        const loadText = formatLoadText(order, "🔥 DIQQAT YUK !");
-        const inlineKeyboard = Markup.inlineKeyboard([
-            [Markup.button.url("💬 Telegram orqali yozish", `tg://user?id=${ctx.from.id}`)]
-        ]);
-
-        const data = readData();
-        const promises = [];
-
-        // Adminga yuborish
-        if (ADMIN_CHAT_ID) {
-            promises.push(
-                bot.telegram.sendMessage(ADMIN_CHAT_ID, loadText, { parse_mode: 'HTML', ...inlineKeyboard })
-                    .then(msg => ({ chat_id: ADMIN_CHAT_ID, message_id: msg.message_id }))
-                    .catch(() => null)
-            );
-        }
-
-        // Kanalga yuborish
-        promises.push(postToChannel(loadText, inlineKeyboard));
-
-        // Barcha foydalanuvchilarga yuborish + bildirishnoma
-        for (const userId of data.users) {
-            if (userId !== ctx.from.id) {
-                promises.push(
-                    bot.telegram.sendMessage(userId, loadText, { parse_mode: 'HTML', ...inlineKeyboard })
-                        .then(msg => ({ chat_id: userId, message_id: msg.message_id }))
-                        .catch(() => null)
-                );
-            }
-        }
-
-        Promise.all(promises).then(results => {
-            const validBroadcasts = results.filter(r => r !== null);
-            if (validBroadcasts.length > 0) {
-                const currentData = readData();
-                const targetOrder = currentData.loads.find(l => l.id === order.id);
-                if (targetOrder) {
-                    if (!targetOrder.broadcasts) targetOrder.broadcasts = [];
-                    targetOrder.broadcasts.push(...validBroadcasts);
-                    writeData(currentData);
-                }
-            }
-        });
+        await broadcastLoad(order, "🔥 DIQQAT YUK !");
 
         await ctx.reply("✅ Buyurtmangiz qabul qilindi va barcha haydovchilarga yuborildi. Tez orada siz bilan bog'lanishadi!", Markup.removeKeyboard());
 
+        const MINI_APP_URL = process.env.MINI_APP_URL || '';
         const menuKeyboard = Markup.keyboard([
-            ['📦 Yuk joylash', '🔍 Yuk topish'],
-            ['❌ Yukni bekor qilish']
+            [Markup.button.webApp('📱 Mini App', MINI_APP_URL || 'https://google.com')]
         ]).resize();
-        await ctx.reply("Yana yuk joylash uchun pastdagi tugmani bosing.", menuKeyboard);
+        await ctx.reply("Asosiy menyu:", menuKeyboard);
 
         return ctx.scene.leave();
     }
@@ -613,14 +577,8 @@ const searchWizard = new Scenes.WizardScene(
         await ctx.reply("1️⃣ Qayerdan yuk olib ketmoqchisiz? Davlatni tanlang:", getCountryKeyboard('sfrom'));
         return ctx.wizard.next();
     },
-    async (ctx) => {
-        if (ctx.message) await ctx.reply("⚠️ Iltimos, faqat tugmalardan foydalaning!");
-        return;
-    },
-    async (ctx) => {
-        if (ctx.message) await ctx.reply("⚠️ Iltimos, faqat tugmalardan foydalaning!");
-        return;
-    }
+    requireCallback,
+    requireCallback
 );
 
 searchWizard.action(/sfrom_c_(.+)/, async (ctx) => {
@@ -661,15 +619,31 @@ searchWizard.action(/sto_r_(.+)_(.+)/, async (ctx) => {
     const matchingLoads = loads.filter(l => l.qayerdan === qayerdan && l.qayerga === qayerga);
     const resultsToTrack = [];
 
-    if (matchingLoads.length > 0) {
-        // FIX: nechta topilganini aniq ko'rsatish
-        await ctx.reply(`✅ ${qayerdan} → ${qayerga} yo'nalishida ${matchingLoads.length} ta yuk topildi (oxirgi 5 tasi ko'rsatilmoqda):`);
-        for (const l of matchingLoads.slice(-5)) {
+    const sendLoadResults = async (loadList) => {
+        for (const l of loadList) {
             const text = formatLoadText(l, "🟢 FAOL YUK");
-            const kb = Markup.inlineKeyboard([[Markup.button.url("💬 Telegram orqali yozish", `tg://user?id=${l.buyurtmachi_id}`)]]);
+            let p = l.telefon;
+            let u = "";
+            if (data.userProfiles && data.userProfiles[l.buyurtmachi_id]) {
+                p = p || data.userProfiles[l.buyurtmachi_id].phone;
+                u = data.userProfiles[l.buyurtmachi_id].username;
+            }
+            const fp = (p || '').startsWith('+') ? p : '+' + p;
+            const btn = [];
+            if (fp && fp !== '+') btn.push(Markup.button.url("📞 Bog'lanish", `tel:${fp}`));
+            if (u) btn.push(Markup.button.url("💬 Telegram", `https://t.me/${u}`));
+            else btn.push(Markup.button.url("💬 Telegram", `tg://user?id=${l.buyurtmachi_id}`));
+            
+            const kb = Markup.inlineKeyboard([btn]);
             const msg = await ctx.reply(text, { parse_mode: 'HTML', ...kb });
             resultsToTrack.push({ loadId: l.id, chatId: ctx.from.id, msgId: msg.message_id });
         }
+    };
+
+    if (matchingLoads.length > 0) {
+        // FIX: nechta topilganini aniq ko'rsatish
+        await ctx.reply(`✅ ${qayerdan} → ${qayerga} yo'nalishida ${matchingLoads.length} ta yuk topildi (oxirgi 5 tasi ko'rsatilmoqda):`);
+        await sendLoadResults(matchingLoads.slice(-5));
     } else {
         // FIX: aniq yo'nalish ko'rsatildi
         await ctx.reply(`❌ ${qayerdan} → ${qayerga} yo'nalishida hozircha yuk yo'q.\n\n📋 Boshqa yo'nalishlardagi so'nggi yuklar:`);
@@ -677,12 +651,7 @@ searchWizard.action(/sto_r_(.+)_(.+)/, async (ctx) => {
         if (recentLoads.length === 0) {
             await ctx.reply("Hozircha tizimda hech qanday yuk yo'q.");
         } else {
-            for (const l of recentLoads) {
-                const text = formatLoadText(l, "🟢 FAOL YUK");
-                const kb = Markup.inlineKeyboard([[Markup.button.url("💬 Telegram orqali yozish", `tg://user?id=${l.buyurtmachi_id}`)]]);
-                const msg = await ctx.reply(text, { parse_mode: 'HTML', ...kb });
-                resultsToTrack.push({ loadId: l.id, chatId: ctx.from.id, msgId: msg.message_id });
-            }
+            await sendLoadResults(recentLoads);
         }
     }
 
@@ -698,9 +667,9 @@ searchWizard.action(/sto_r_(.+)_(.+)/, async (ctx) => {
         writeData(currentData);
     }
 
+    const MINI_APP_URL = process.env.MINI_APP_URL || '';
     const menuKeyboard = Markup.keyboard([
-        ['📦 Yuk joylash', '🔍 Yuk topish'],
-        ['❌ Yukni bekor qilish']
+        [Markup.button.webApp('📱 Mini App', MINI_APP_URL || 'https://google.com')]
     ]).resize();
     await ctx.reply("Bosh menyu:", menuKeyboard);
     return ctx.scene.leave();
@@ -716,14 +685,40 @@ const MINI_APP_URL = process.env.MINI_APP_URL || '';
 // /start komandasi
 bot.start((ctx) => {
     ctx.session = {};
-    addUser(ctx.from.id);
-    const userName = ctx.from.first_name || 'Foydalanuvchi';
-    const menuKeyboard = Markup.keyboard([
-        ['📦 Yuk joylash', '🔍 Yuk topish'],
-        ['❌ Yukni bekor qilish', Markup.button.webApp('📱 Mini App', MINI_APP_URL || 'https://google.com')]
-    ]).resize();
-    ctx.reply(`Salom, ${userName}! Yukla Logistics botimizga xush kelibsiz! 🚛\nQuyidagi menyudan kerakli bo'limni tanlang:`, menuKeyboard);
+    const userId = ctx.from.id;
+    const data = readData();
+    
+    // Ro'yxatdan o'tganligini tekshirish
+    if (!data.userProfiles || !data.userProfiles[userId] || !data.userProfiles[userId].phone) {
+        const contactKeyboard = Markup.keyboard([
+            [Markup.button.contactRequest("📱 Telefon raqamni yuborish")]
+        ]).resize().oneTime();
+        return ctx.reply(`Salom, ${ctx.from.first_name || 'Foydalanuvchi'}! Yukla Logistics botimizga xush kelibsiz! 🚛\n\nBotdan to'liq foydalanish uchun, iltimos, pastdagi tugmani bosib telefon raqamingizni yuboring:`, contactKeyboard);
+    }
+    
+    showMainMenu(ctx);
 });
+
+bot.on('contact', (ctx) => {
+    const contact = ctx.message.contact;
+    if (contact.user_id === ctx.from.id || contact.phone_number) {
+        saveUserProfile({
+            id: ctx.from.id,
+            phone: contact.phone_number,
+            username: ctx.from.username || '',
+            first_name: ctx.from.first_name || ''
+        });
+        ctx.reply("✅ Telefon raqamingiz saqlandi!");
+        showMainMenu(ctx);
+    }
+});
+
+function showMainMenu(ctx) {
+    const menuKeyboard = Markup.keyboard([
+        [Markup.button.webApp('📱 Mini App', MINI_APP_URL || 'https://google.com')]
+    ]).resize();
+    ctx.reply("Quyidagi tugma orqali Mini App ga kiring va yuklarni boshqaring:", menuKeyboard);
+}
 
 // Mini App tugmasi
 bot.hears('📱 Mini App', (ctx) => {
@@ -751,61 +746,7 @@ bot.command('statistika', (ctx) => {
     ctx.reply(text, { parse_mode: 'HTML' });
 });
 
-// Yuk joylash
-bot.hears('📦 Yuk joylash', (ctx) => {
-    ctx.scene.enter('ORDER_WIZARD');
-});
-
-// Yuk topish
-bot.hears('🔍 Yuk topish', (ctx) => {
-    ctx.scene.enter('SEARCH_WIZARD');
-});
-
-// Yukni bekor qilish
-bot.hears('❌ Yukni bekor qilish', async (ctx) => {
-    const data = readData();
-    const myLoads = data.loads.filter(l => l.buyurtmachi_id === ctx.from.id);
-    if (myLoads.length === 0) {
-        return ctx.reply("Sizda hozircha faol yuklar yo'q.");
-    }
-    await ctx.reply("Sizning faol yuklaringiz. O'chirish uchun '❌ Tugatish' ni bosing:");
-    for (const load of myLoads) {
-        const text = formatLoadText(load, "🟢 FAOL YUK");
-        const keyboard = Markup.inlineKeyboard([
-            [Markup.button.callback("❌ Tugatish", `cancel_load_${load.id}`)]
-        ]);
-        await ctx.reply(text, { parse_mode: 'HTML', ...keyboard });
-    }
-});
-
-bot.action(/cancel_load_(.+)/, async (ctx) => {
-    const loadId = ctx.match[1];
-    const data = readData();
-    const loadIndex = data.loads.findIndex(l => l.id === loadId);
-
-    if (loadIndex === -1) {
-        return ctx.answerCbQuery("Bu yuk allaqachon bekor qilingan yoki topilmadi.", { show_alert: true });
-    }
-
-    const load = data.loads[loadIndex];
-    if (load.buyurtmachi_id !== ctx.from.id) {
-        return ctx.answerCbQuery("Siz bu yukni bekor qila olmaysiz!", { show_alert: true });
-    }
-
-    if (load.broadcasts) {
-        for (const b of load.broadcasts) {
-            try {
-                await bot.telegram.deleteMessage(b.chat_id, b.message_id);
-            } catch (e) {}
-        }
-    }
-
-    data.loads.splice(loadIndex, 1);
-    writeData(data);
-
-    await ctx.editMessageText("✅ Bu yuk muvaffaqiyatli bekor qilindi va barcha chatlardan o'chirildi.");
-    ctx.answerCbQuery("Yuk o'chirildi.");
-});
+// Qolgan keraksiz tugmalar o'chirildi (Yuk joylash, Yuk topish, Yukni bekor qilish)
 
 // Global xatoliklarni ushlash
 bot.catch((err, ctx) => {
